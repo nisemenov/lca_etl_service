@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/nisemenov/etl_service/internal/model"
+	"github.com/nisemenov/lca_etl_service/internal/model"
 	"github.com/stretchr/testify/require"
 )
 

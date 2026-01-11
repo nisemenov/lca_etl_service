@@ -4,7 +4,7 @@ package usecase
 import (
 	"context"
 
-	"github.com/nisemenov/etl_service/internal/model"
+	"github.com/nisemenov/lca_etl_service/internal/model"
 )
 
 type PaymentFetcher interface {
