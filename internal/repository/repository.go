@@ -1,3 +1,5 @@
+// Package repository contains persistence interfaces and
+// database-backed implementations for payment storage.
 package repository
 
 import (

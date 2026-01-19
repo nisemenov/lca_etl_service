@@ -1,3 +1,5 @@
+// Package etl coordinates the end-to-end ETL workflow,
+// orchestrating producers, repositories, and workers.
 package etl
 
 type Service struct {

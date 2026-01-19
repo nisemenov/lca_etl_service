@@ -1,3 +1,5 @@
+// Package producer provides clients for fetching data
+// from external producer services over HTTP.
 package producer
 
 import (

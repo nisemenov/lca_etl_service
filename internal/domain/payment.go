@@ -1,4 +1,5 @@
-// Package domain описывает основные модели
+// Package domain defines core business entities and types
+// used across the ETL service.
 package domain
 
 import "time"

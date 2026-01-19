@@ -1,3 +1,5 @@
+// Package worker contains background workers responsible
+// for processing and exporting payments.
 package worker
 
 import (

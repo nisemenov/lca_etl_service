@@ -1,3 +1,5 @@
+// Package consumer contains implementations responsible for
+// exporting processed data to external systems such as ClickHouse.
 package consumer
 
 import (
