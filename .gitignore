@@ -1,0 +1,6 @@
+.env
+
+# misc
+.DS_Store
+logs/
+data/
