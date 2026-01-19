@@ -1,5 +1,5 @@
-// Package model описывает основные модели
-package model
+// Package domain описывает основные модели
+package domain
 
 import "time"
 
@@ -8,12 +8,14 @@ type PaymentID int64
 type PaymentStatus string
 
 const (
-	StatusPending   PaymentStatus = "pending"
-	StatusExported  PaymentStatus = "expored"
-	StatusCompleted PaymentStatus = "completed"
+	StatusNew        PaymentStatus = "new"
+	StatusProcessing PaymentStatus = "processing"
+	StatusExported   PaymentStatus = "exported"
+	StatusFailed     PaymentStatus = "failed"
 )
 
 type Payment struct {
+	// from payment_yookassa
 	ID                    PaymentID
 	CaseID                int64
 	DebtorID              int64
