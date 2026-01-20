@@ -17,16 +17,22 @@ const (
 
 type Payment struct {
 	// from payment_yookassa
-	ID                    PaymentID
-	CaseID                int64
-	DebtorID              int64
-	FullName              string
-	CreditNumber          string
-	CreditIssueDate       time.Time
-	Amount                float64
-	DebtAmount            float64
-	ExecutionDateBySystem time.Time
-	Channel               string
+	ID                    PaymentID `validate:"required"`
+	CaseID                int64     `validate:"required"`
+	DebtorID              int64     `validate:"required"`
+	FullName              string    `validate:"required"`
+	CreditNumber          string    `validate:"required"`
+	CreditIssueDate       time.Time `validate:"required"`
+	Amount                float64   `validate:"required"`
+	DebtAmount            float64   `validate:"required"`
+	ExecutionDateBySystem time.Time `validate:"required"`
+	Channel               string    `validate:"required"`
 
-	Status PaymentStatus
+	Status    PaymentStatus
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func (p *Payment) Validate() error {
+	return Validate.Struct(p)
 }
