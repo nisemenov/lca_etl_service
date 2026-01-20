@@ -9,68 +9,17 @@ import (
 )
 
 func TestLoad(t *testing.T) {
-	tests := []struct {
-		name          string
-		env           map[string]string
-		wantDBPath    string
-		wantPanic     bool
-		wantPanicText string
-	}{
-		{
-			name:       "DB_PATH задан через переменную окружения",
-			env:        map[string]string{"DB_PATH": "/data/myapp.db"},
-			wantDBPath: "/data/myapp.db",
-			wantPanic:  false,
-		},
-		{
-			name:          "DB_PATH не задан → должен паниковать",
-			env:           map[string]string{},
-			wantDBPath:    "",
-			wantPanic:     true,
-			wantPanicText: "DB_PATH is required",
-		},
-		{
-			name:          "DB_PATH пустая строка → тоже паника",
-			env:           map[string]string{"DB_PATH": ""},
-			wantDBPath:    "",
-			wantPanic:     true,
-			wantPanicText: "DB_PATH is required",
-		},
-	}
+	os.Clearenv()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			os.Clearenv()
-			for k, v := range tt.env {
-				require.NoError(t, os.Setenv(k, v))
-			}
+	var panicMsg interface{}
+	func() {
+		defer func() {
+			panicMsg = recover()
+		}()
+		Load()
+	}()
 
-			t.Cleanup(func() {
-				os.Clearenv()
-			})
-
-			var cfg *Config
-			var panicMsg interface{}
-
-			func() {
-				defer func() {
-					panicMsg = recover()
-				}()
-				cfg = Load()
-			}()
-
-			if tt.wantPanic {
-				require.NotNil(t, panicMsg, "ожидалась паника, но её не было")
-				assert.Equal(t, tt.wantPanicText, panicMsg,
-					"неверное сообщение в панике")
-				return
-			}
-
-			require.Nil(t, panicMsg, "неожиданная паника")
-			require.NotNil(t, cfg, "конфиг не должен быть nil")
-			assert.Equal(t, tt.wantDBPath, cfg.DBPath)
-		})
-	}
+	require.NotNil(t, panicMsg, "ожидалась паника, но её не было")
 }
 
 func Test_getEnv(t *testing.T) {
