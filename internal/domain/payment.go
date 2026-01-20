@@ -2,7 +2,11 @@
 // used across the ETL service.
 package domain
 
-import "time"
+import (
+	"time"
+
+	"github.com/nisemenov/etl_service/internal/validation"
+)
 
 type PaymentID int64
 
@@ -34,5 +38,5 @@ type Payment struct {
 }
 
 func (p *Payment) Validate() error {
-	return Validate.Struct(p)
+	return validation.Validate.Struct(p)
 }
