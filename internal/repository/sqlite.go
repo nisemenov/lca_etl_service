@@ -21,6 +21,10 @@ func (r *SQLiteRepository) SaveBatch(
 	ctx context.Context,
 	payments []domain.Payment,
 ) error {
+	if len(payments) == 0 {
+		return nil
+	}
+
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
@@ -28,18 +32,44 @@ func (r *SQLiteRepository) SaveBatch(
 	defer tx.Rollback()
 
 	stmt, err := tx.PrepareContext(ctx, `
-        INSERT INTO payments (id, status)
-        VALUES (?, ?)
-    `)
+        INSERT INTO payments (
+            id,
+			case_id,
+			debtor_id,
+			full_name,
+			credit_number,
+			credit_issue_date,
+			amount,
+			debt_amount,
+			execution_date_by_system,
+			channel,
+			status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id) DO UPDATE SET
+            status = excluded.status,
+            updated_at = CURRENT_TIMESTAMP
+	`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	for _, p := range payments {
-		_, err := stmt.ExecContext(ctx, p.ID, p.Status)
+		_, err := stmt.ExecContext(ctx,
+			p.ID,
+			p.CaseID,
+			p.DebtorID,
+			p.FullName,
+			p.CreditNumber,
+			p.CreditIssueDate,
+			p.Amount,
+			p.DebtAmount,
+			p.ExecutionDateBySystem,
+			p.Channel,
+			domain.StatusNew,
+		)
 		if err != nil {
-			return err
+			return fmt.Errorf("insert payment %d: %w", p.ID, err)
 		}
 	}
 
@@ -57,7 +87,7 @@ func (r *SQLiteRepository) FetchForProcessing(
 	defer tx.Rollback()
 
 	rows, err := tx.QueryContext(ctx, `
-        SELECT id
+		SELECT id
         FROM payments
         WHERE status = ?
         LIMIT ?
@@ -139,4 +169,60 @@ func (r *SQLiteRepository) markStatusTx(
 
 	_, err := tx.ExecContext(ctx, query, args...)
 	return err
+}
+
+func (r *SQLiteRepository) fetchNewPayments(ctx context.Context, limit int) ([]domain.Payment, error) {
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT 
+			id,
+			case_id,
+			debtor_id,
+			full_name,
+			credit_number,
+            credit_issue_date,
+			amount,
+			debt_amount,
+			execution_date_by_system,
+            channel,
+			status,
+			created_at,
+			updated_at
+        FROM payments
+        WHERE status = ?
+        ORDER BY created_at ASC
+        LIMIT ?
+	`, domain.StatusNew, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	return scanPayments(rows)
+}
+
+func scanPayments(rows *sql.Rows) ([]domain.Payment, error) {
+	var payments []domain.Payment
+	for rows.Next() {
+		var p domain.Payment
+		err := rows.Scan(
+			&p.ID,
+			&p.CaseID,
+			&p.DebtorID,
+			&p.FullName,
+			&p.CreditNumber,
+			&p.CreditIssueDate,
+			&p.Amount,
+			&p.DebtAmount,
+			&p.ExecutionDateBySystem,
+			&p.Channel,
+			&p.Status,
+			&p.CreatedAt,
+			&p.UpdatedAt,
+		)
+		if err != nil {
+			return nil, err
+		}
+		payments = append(payments, p)
+	}
+	return payments, rows.Err()
 }
