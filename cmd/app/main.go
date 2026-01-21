@@ -1,7 +1,9 @@
 package main
 
 import (
+	"log/slog"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/nisemenov/etl_service/internal/config"
@@ -10,7 +12,18 @@ import (
 	"github.com/nisemenov/etl_service/internal/storage/sqlite"
 )
 
+var logger *slog.Logger
+
+func InitLogger() *slog.Logger {
+	handler := slog.NewTextHandler(os.Stdout, nil)
+	logger = slog.New(handler)
+	return logger
+}
+
 func main() {
+	logger := InitLogger()
+	logger.Info("service started")
+
 	cfg := config.Load()
 
 	db := sqlite.OpenSQLite(cfg.DBPath)
