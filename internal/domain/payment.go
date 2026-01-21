@@ -19,6 +19,9 @@ const (
 	StatusFailed     PaymentStatus = "failed"
 )
 
+// type for float == int * 100
+type Money int64
+
 type Payment struct {
 	// from payment_yookassa
 	ID                    PaymentID `validate:"required"`
@@ -27,8 +30,8 @@ type Payment struct {
 	FullName              string    `validate:"required"`
 	CreditNumber          string    `validate:"required"`
 	CreditIssueDate       time.Time `validate:"required"`
-	Amount                float64   `validate:"required"`
-	DebtAmount            float64   `validate:"required"`
+	Amount                Money     `validate:"required"`
+	DebtAmount            Money     `validate:"required"`
 	ExecutionDateBySystem time.Time `validate:"required"`
 	Channel               string    `validate:"required"`
 

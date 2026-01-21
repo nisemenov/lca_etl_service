@@ -57,8 +57,6 @@ func TestHTTPProducer_Post(t *testing.T) {
 		err := json.NewDecoder(r.Body).Decode(&body)
 		require.NoError(t, err)
 		require.Equal(t, 123, body["id"])
-
-		w.WriteHeader(200)
 	}))
 	defer server.Close()
 

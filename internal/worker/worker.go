@@ -30,7 +30,7 @@ func worker(
 				continue
 			}
 
-			_ = repo.MarkSent(ctx, []int64{int64(p.ID)})
+			repo.MarkSent(ctx, []domain.PaymentID{p.ID})
 		}
 	}
 }
