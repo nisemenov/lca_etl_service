@@ -23,3 +23,13 @@ func Migrate(db *sql.DB) error {
 
 	return goose.Up(db, "migrations")
 }
+
+func OpenSQLite(dsn string) *sql.DB {
+	db, err := sql.Open("sqlite3", dsn)
+
+	if err != nil {
+		panic(fmt.Sprintf("failed to open DB %q", dsn))
+	}
+
+	return db
+}
