@@ -11,7 +11,7 @@ import (
 func TestLoad(t *testing.T) {
 	os.Clearenv()
 
-	var panicMsg interface{}
+	var panicMsg any
 	func() {
 		defer func() {
 			panicMsg = recover()

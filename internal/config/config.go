@@ -19,10 +19,10 @@ import (
 )
 
 const (
-    FetchPaymentsForCH = "/payments/not-exported/"
-    FetchYookassaForCH = "/payments/yookassa/not-exported/"
-    UpdatePaymentExportedInstances = "/payments/mark-exported/"
-    UpdateYookassaExportedInstances = "/payments/yookassa/mark-exported/"
+	FetchPaymentsForCH              = "/payments/not-exported/"
+	FetchYookassaForCH              = "/payments/yookassa/not-exported/"
+	UpdatePaymentExportedInstances  = "/payments/mark-exported/"
+	UpdateYookassaExportedInstances = "/payments/yookassa/mark-exported/"
 )
 
 type Config struct {
