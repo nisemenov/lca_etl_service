@@ -1,3 +1,5 @@
+// Package repository contains persistence interfaces and
+// database-backed implementations for payment storage.
 package repository
 
 import (
@@ -9,15 +11,21 @@ import (
 	"github.com/nisemenov/etl_service/internal/domain"
 )
 
-type SQLiteRepository struct {
+type PaymentRepository interface {
+	SaveBatch(ctx context.Context, payments []domain.Payment) error
+	FetchForProcessing(ctx context.Context, limit int) ([]domain.Payment, error)
+	MarkSent(ctx context.Context, ids []domain.PaymentID) error
+}
+
+type SQLitePaymentRepo struct {
 	db *sql.DB
 }
 
-func NewSQLiteRepository(db *sql.DB) *SQLiteRepository {
-	return &SQLiteRepository{db: db}
+func NewSQLitePaymentRepo(db *sql.DB) *SQLitePaymentRepo {
+	return &SQLitePaymentRepo{db: db}
 }
 
-func (r *SQLiteRepository) SaveBatch(
+func (r *SQLitePaymentRepo) SaveBatch(
 	ctx context.Context,
 	payments []domain.Payment,
 ) error {
@@ -76,7 +84,7 @@ func (r *SQLiteRepository) SaveBatch(
 	return tx.Commit()
 }
 
-func (r *SQLiteRepository) FetchForProcessing(
+func (r *SQLitePaymentRepo) FetchForProcessing(
 	ctx context.Context,
 	limit int,
 ) ([]domain.Payment, error) {
@@ -129,7 +137,7 @@ func (r *SQLiteRepository) FetchForProcessing(
 	return payments, nil
 }
 
-func (r *SQLiteRepository) MarkSent(
+func (r *SQLitePaymentRepo) MarkSent(
 	ctx context.Context,
 	ids []domain.PaymentID,
 ) error {
@@ -146,7 +154,7 @@ func (r *SQLiteRepository) MarkSent(
 	return tx.Commit()
 }
 
-func (r *SQLiteRepository) markStatusTx(
+func (r *SQLitePaymentRepo) markStatusTx(
 	ctx context.Context,
 	tx *sql.Tx,
 	ids []domain.PaymentID,
@@ -171,7 +179,7 @@ func (r *SQLiteRepository) markStatusTx(
 	return err
 }
 
-func (r *SQLiteRepository) fetchNewPayments(ctx context.Context, limit int) ([]domain.Payment, error) {
+func (r *SQLitePaymentRepo) fetchNewPayments(ctx context.Context, limit int) ([]domain.Payment, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT 
 			id,
