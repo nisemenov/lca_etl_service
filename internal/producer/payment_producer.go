@@ -4,7 +4,6 @@ package producer
 
 import (
 	"context"
-	"errors"
 	"log/slog"
 	"math"
 
@@ -28,37 +27,48 @@ func NewPaymentProducer(http *HTTPProducer, logger *slog.Logger) PaymentProducer
 
 func (p *paymentProducer) FetchPayments(ctx context.Context) ([]domain.Payment, error) {
 	var resp fetchPaymentsResponse
+
 	err := p.http.Get(ctx, config.FetchPaymentsPath, &resp)
+	if err != nil {
+		p.logger.Error(
+			"failed to fetch payment data",
+			"err", err,
+		)
+		return nil, err
+	}
 
 	// fill output in with validated data
-	out := make([]domain.Payment, 0, len(resp.Data))
-	for _, dto := range resp.Data {
-		if err := dto.Validate(); err != nil {
-			p.logger.Warn(err.Error(), "invalid paymentDTO with ID", dto.ID)
+	response := make([]domain.Payment, 0, len(resp.Data))
+	for _, rawPayment := range resp.Data {
+		if err := rawPayment.Validate(); err != nil {
+			p.logger.Warn(
+				"failed to validate raw payment data",
+				"err", err,
+			)
 			continue
 		}
 
-		amount := domain.Money(math.Round(dto.Amount * 100))
-		debt := domain.Money(math.Round(dto.DebtAmount * 100))
+		amount := domain.Money(math.Round(rawPayment.Amount * 100))
+		debt := domain.Money(math.Round(rawPayment.DebtAmount * 100))
 
-		out = append(out, domain.Payment{
-			ID:                    dto.ID,
-			CaseID:                dto.CaseID,
-			DebtorID:              dto.DebtorID,
-			FullName:              dto.FullName,
-			CreditNumber:          dto.CreditNumber,
-			CreditIssueDate:       dto.CreditIssueDate,
+		response = append(response, domain.Payment{
+			ID:                    rawPayment.ID,
+			CaseID:                rawPayment.CaseID,
+			DebtorID:              rawPayment.DebtorID,
+			FullName:              rawPayment.FullName,
+			CreditNumber:          rawPayment.CreditNumber,
+			CreditIssueDate:       rawPayment.CreditIssueDate,
 			Amount:                amount,
 			DebtAmount:            debt,
-			ExecutionDateBySystem: dto.ExecutionDateBySystem,
-			Channel:               dto.Channel,
+			ExecutionDateBySystem: rawPayment.ExecutionDateBySystem,
+			Channel:               rawPayment.Channel,
 		})
 	}
-	if len(out) == 0 {
-		return nil, errors.New("all payments invalid")
+	if len(response) == 0 {
+		p.logger.Error("all payments invalid")
 	}
 
-	return out, err
+	return response, nil
 }
 
 func (p *paymentProducer) AckPayments(ctx context.Context, ids []domain.PaymentID) error {
@@ -66,10 +76,20 @@ func (p *paymentProducer) AckPayments(ctx context.Context, ids []domain.PaymentI
 		p.logger.Warn("empty ids batch for AckPayments")
 		return nil
 	}
+
 	payload := struct {
 		IDs []domain.PaymentID `json:"ids"`
 	}{
 		IDs: ids,
 	}
-	return p.http.Post(ctx, config.AckPaymentsPath, payload)
+
+	err := p.http.Post(ctx, config.AckPaymentsPath, payload)
+	if err != nil {
+		p.logger.Error(
+			"failed to insert payment ids into prod service",
+			"err", err,
+		)
+		return err
+	}
+	return nil
 }

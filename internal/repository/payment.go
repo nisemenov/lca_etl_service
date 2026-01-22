@@ -25,10 +25,7 @@ func NewSQLitePaymentRepo(db *sql.DB) *SQLitePaymentRepo {
 	return &SQLitePaymentRepo{db: db}
 }
 
-func (r *SQLitePaymentRepo) SaveBatch(
-	ctx context.Context,
-	payments []domain.Payment,
-) error {
+func (r *SQLitePaymentRepo) SaveBatch(ctx context.Context, payments []domain.Payment) error {
 	if len(payments) == 0 {
 		return nil
 	}
@@ -84,10 +81,7 @@ func (r *SQLitePaymentRepo) SaveBatch(
 	return tx.Commit()
 }
 
-func (r *SQLitePaymentRepo) FetchForProcessing(
-	ctx context.Context,
-	limit int,
-) ([]domain.Payment, error) {
+func (r *SQLitePaymentRepo) FetchForProcessing(ctx context.Context, limit int) ([]domain.Payment, error) {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -137,10 +131,7 @@ func (r *SQLitePaymentRepo) FetchForProcessing(
 	return payments, nil
 }
 
-func (r *SQLitePaymentRepo) MarkSent(
-	ctx context.Context,
-	ids []domain.PaymentID,
-) error {
+func (r *SQLitePaymentRepo) MarkSent(ctx context.Context, ids []domain.PaymentID) error {
 	tx, err := r.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
