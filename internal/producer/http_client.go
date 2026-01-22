@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -43,8 +44,12 @@ func (p *HTTPProducer) Get(ctx context.Context, path string, out any) error {
 
 func (p *HTTPProducer) Post(ctx context.Context, path string, body any) error {
 	b, _ := json.Marshal(body)
-	req, _ := http.NewRequestWithContext(ctx, "POST", p.baseURL+path, bytes.NewReader(b))
-	req.Header.Set("Content-Type", "application/json")
+	return p.PostRaw(ctx, path, "application/json", bytes.NewReader(b))
+}
+
+func (p *HTTPProducer) PostRaw(ctx context.Context, path string, contentType string, body io.Reader) error {
+	req, _ := http.NewRequestWithContext(ctx, "POST", p.baseURL+path, body)
+	req.Header.Set("Content-Type", contentType)
 
 	resp, err := p.client.Do(req)
 	if err != nil {
@@ -53,7 +58,8 @@ func (p *HTTPProducer) Post(ctx context.Context, path string, body any) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode >= 300 {
-		return fmt.Errorf("http %d", resp.StatusCode)
+		b, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("http %d: %s", resp.StatusCode, string(b))
 	}
 	return nil
 }
