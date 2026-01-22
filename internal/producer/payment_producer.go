@@ -28,7 +28,7 @@ func NewPaymentProducer(http *HTTPProducer, logger *slog.Logger) PaymentProducer
 
 func (p *paymentProducer) FetchPayments(ctx context.Context) ([]domain.Payment, error) {
 	var resp fetchPaymentsResponse
-	err := p.http.Get(ctx, config.FetchPaymentsForCH, &resp)
+	err := p.http.Get(ctx, config.FetchPaymentsPath, &resp)
 
 	// fill output in with validated data
 	out := make([]domain.Payment, 0, len(resp.Data))
@@ -62,5 +62,14 @@ func (p *paymentProducer) FetchPayments(ctx context.Context) ([]domain.Payment, 
 }
 
 func (p *paymentProducer) AckPayments(ctx context.Context, ids []domain.PaymentID) error {
-	return p.http.Post(ctx, config.UpdatePaymentExportedInstances, ids)
+	if len(ids) == 0 {
+		p.logger.Warn("empty ids batch for AckPayments")
+		return nil
+	}
+	payload := struct {
+		IDs []domain.PaymentID `json:"ids"`
+	}{
+		IDs: ids,
+	}
+	return p.http.Post(ctx, config.AckPaymentsPath, payload)
 }

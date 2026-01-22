@@ -2,18 +2,30 @@ package producer
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
+	"github.com/nisemenov/etl_service/internal/config"
 	"github.com/nisemenov/etl_service/internal/domain"
 	"github.com/stretchr/testify/require"
 )
 
+func getPayProducer(server *httptest.Server) PaymentProducer {
+	client := &http.Client{}
+	prod := NewHTTPProducer(client, server.URL)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	return NewPaymentProducer(prod, logger)
+}
+
 func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "GET", r.Method)
+		require.Equal(t, config.FetchPaymentsPath, r.URL.Path)
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{
 			"data": [
@@ -33,11 +45,9 @@ func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
 		}`))
 	}))
 	defer server.Close()
-
 	payProducer := getPayProducer(server)
 
 	payments, err := payProducer.FetchPayments(context.Background())
-
 	require.NoError(t, err)
 	require.Len(t, payments, 1)
 
@@ -70,21 +80,49 @@ func TestPaymentProducer_FetchPayments_SkipsInvalid(t *testing.T) {
 		}`))
 	}))
 	defer server.Close()
-
 	payProducer := getPayProducer(server)
 
 	payments, err := payProducer.FetchPayments(context.Background())
-
 	require.NoError(t, err)
 	require.Len(t, payments, 1)
-
-	first := payments[0]
-	require.Equal(t, domain.PaymentID(2), first.ID)
+	require.Equal(t, domain.PaymentID(2), payments[0].ID)
 }
 
-func getPayProducer(server *httptest.Server) PaymentProducer {
-	client := &http.Client{}
-	prod := NewHTTPProducer(client, server.URL)
-	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
-	return NewPaymentProducer(prod, logger)
+func TestPaymentProducer_AckPayments_OK(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "POST", r.Method)
+		require.Equal(t, config.AckPaymentsPath, r.URL.Path)
+
+		var body struct {
+			IDs []int64 `json:"ids"`
+		}
+		err := json.NewDecoder(r.Body).Decode(&body)
+		require.NoError(t, err)
+		require.Equal(t, []int64{1, 2}, body.IDs)
+	}))
+	defer server.Close()
+	payProducer := getPayProducer(server)
+
+	err := payProducer.AckPayments(context.Background(), []domain.PaymentID{domain.PaymentID(1), domain.PaymentID(2)})
+	require.NoError(t, err)
+}
+
+func TestPaymentProducer_AckPayments_HTTPError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(`{"error":"db down"}`))
+	}))
+	defer server.Close()
+	payProducer := getPayProducer(server)
+
+	err := payProducer.AckPayments(context.Background(), []domain.PaymentID{1, 2})
+	require.Error(t, err)
+}
+
+func TestPaymentProducer_AckPayments_Empty(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	payProducer := NewPaymentProducer(nil, logger)
+
+	err := payProducer.AckPayments(context.Background(), nil)
+	require.NoError(t, err)
 }

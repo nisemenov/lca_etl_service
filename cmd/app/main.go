@@ -35,7 +35,7 @@ func main() {
 	paymentsProducer := producer.NewHTTPProducer(
 		httpClient,
 		cfg.APIBaseURL,
-		config.FetchPaymentsForCH,
+		config.FetchPaymentsPath,
 	)
 
 	paymentsRepo := repository.NewSQLitePaymentRepo(db)

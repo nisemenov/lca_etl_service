@@ -15,6 +15,7 @@ const testURL = "/test"
 
 func TestHTTPProducer_Get_OK(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, "GET", r.Method)
 		require.Equal(t, testURL, r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
