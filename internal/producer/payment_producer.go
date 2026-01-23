@@ -5,10 +5,9 @@ package producer
 import (
 	"context"
 	"log/slog"
-	"math"
 
-	"github.com/nisemenov/etl_service/internal/config"
 	"github.com/nisemenov/etl_service/internal/domain"
+	"github.com/nisemenov/etl_service/internal/httpclient"
 )
 
 type PaymentProducer interface {
@@ -17,18 +16,14 @@ type PaymentProducer interface {
 }
 
 type paymentProducer struct {
-	http   *HTTPProducer
+	http   *httpclient.HTTPClient
 	logger *slog.Logger
-}
-
-func NewPaymentProducer(http *HTTPProducer, logger *slog.Logger) PaymentProducer {
-	return &paymentProducer{http: http, logger: logger}
 }
 
 func (p *paymentProducer) FetchPayments(ctx context.Context) ([]domain.Payment, error) {
 	var resp fetchPaymentsResponse
 
-	err := p.http.Get(ctx, config.FetchPaymentsPath, &resp)
+	err := p.http.Get(ctx, FetchPaymentsPath, &resp)
 	if err != nil {
 		p.logger.Error(
 			"failed to fetch payment data",
@@ -48,8 +43,8 @@ func (p *paymentProducer) FetchPayments(ctx context.Context) ([]domain.Payment, 
 			continue
 		}
 
-		amount := domain.Money(math.Round(rawPayment.Amount * 100))
-		debt := domain.Money(math.Round(rawPayment.DebtAmount * 100))
+		amount := domain.FloatToMoney(rawPayment.Amount)
+		debt := domain.FloatToMoney(rawPayment.DebtAmount)
 
 		response = append(response, domain.Payment{
 			ID:                    rawPayment.ID,
@@ -83,7 +78,7 @@ func (p *paymentProducer) AckPayments(ctx context.Context, ids []domain.PaymentI
 		IDs: ids,
 	}
 
-	err := p.http.Post(ctx, config.AckPaymentsPath, payload)
+	err := p.http.Post(ctx, AckPaymentsPath, payload)
 	if err != nil {
 		p.logger.Error(
 			"failed to insert payment ids into prod service",
@@ -92,4 +87,8 @@ func (p *paymentProducer) AckPayments(ctx context.Context, ids []domain.PaymentI
 		return err
 	}
 	return nil
+}
+
+func NewPaymentProducer(http *httpclient.HTTPClient, logger *slog.Logger) PaymentProducer {
+	return &paymentProducer{http: http, logger: logger}
 }

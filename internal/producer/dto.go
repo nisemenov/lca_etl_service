@@ -24,6 +24,7 @@ func (p *paymentDTO) Validate() error {
 	return validation.Validate.Struct(p)
 }
 
+// fetchPaymentsResponse contains raw data from prod API
 type fetchPaymentsResponse struct {
 	Data []paymentDTO `json:"data"`
 }

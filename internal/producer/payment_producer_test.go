@@ -9,22 +9,18 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/nisemenov/etl_service/internal/config"
 	"github.com/nisemenov/etl_service/internal/domain"
+	"github.com/nisemenov/etl_service/internal/httpclient"
 	"github.com/stretchr/testify/require"
 )
 
-func getPayProducer(server *httptest.Server) PaymentProducer {
-	client := &http.Client{}
-	prod := NewHTTPProducer(client, server.URL)
-	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	return NewPaymentProducer(prod, logger)
-}
-
 func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
+	var mthd string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "GET", r.Method)
-		require.Equal(t, config.FetchPaymentsPath, r.URL.Path)
+		mthd = r.Method
+
+		require.Equal(t, FetchPaymentsPath, r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{
@@ -45,10 +41,12 @@ func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
 		}`))
 	}))
 	defer server.Close()
-	payProducer := getPayProducer(server)
 
+	payProducer := getPayProducer(server)
 	payments, err := payProducer.FetchPayments(context.Background())
+
 	require.NoError(t, err)
+	require.Equal(t, "GET", mthd)
 	require.Len(t, payments, 1)
 
 	first := payments[0]
@@ -58,7 +56,11 @@ func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
 }
 
 func TestPaymentProducer_FetchPayments_SkipsInvalid(t *testing.T) {
+	var mthd string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mthd = r.Method
+
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{
 			"data": [
@@ -80,18 +82,23 @@ func TestPaymentProducer_FetchPayments_SkipsInvalid(t *testing.T) {
 		}`))
 	}))
 	defer server.Close()
-	payProducer := getPayProducer(server)
 
+	payProducer := getPayProducer(server)
 	payments, err := payProducer.FetchPayments(context.Background())
+
 	require.NoError(t, err)
+	require.Equal(t, "GET", mthd)
 	require.Len(t, payments, 1)
 	require.Equal(t, domain.PaymentID(2), payments[0].ID)
 }
 
 func TestPaymentProducer_AckPayments_OK(t *testing.T) {
+	var mthd string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, "POST", r.Method)
-		require.Equal(t, config.AckPaymentsPath, r.URL.Path)
+		mthd = r.Method
+
+		require.Equal(t, AckPaymentsPath, r.URL.Path)
 
 		var body struct {
 			IDs []int64 `json:"ids"`
@@ -101,22 +108,30 @@ func TestPaymentProducer_AckPayments_OK(t *testing.T) {
 		require.Equal(t, []int64{1, 2}, body.IDs)
 	}))
 	defer server.Close()
-	payProducer := getPayProducer(server)
 
+	payProducer := getPayProducer(server)
 	err := payProducer.AckPayments(context.Background(), []domain.PaymentID{domain.PaymentID(1), domain.PaymentID(2)})
+
 	require.NoError(t, err)
+	require.Equal(t, "POST", mthd)
 }
 
 func TestPaymentProducer_AckPayments_HTTPError(t *testing.T) {
+	var mthd string
+
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mthd = r.Method
+
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(`{"error":"db down"}`))
 	}))
 	defer server.Close()
-	payProducer := getPayProducer(server)
 
+	payProducer := getPayProducer(server)
 	err := payProducer.AckPayments(context.Background(), []domain.PaymentID{1, 2})
+
 	require.Error(t, err)
+	require.Equal(t, "POST", mthd)
 }
 
 func TestPaymentProducer_AckPayments_Empty(t *testing.T) {
@@ -125,4 +140,11 @@ func TestPaymentProducer_AckPayments_Empty(t *testing.T) {
 
 	err := payProducer.AckPayments(context.Background(), nil)
 	require.NoError(t, err)
+}
+
+func getPayProducer(server *httptest.Server) PaymentProducer {
+	prod := httpclient.NewHTTPClient(&http.Client{}, server.URL)
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+
+	return NewPaymentProducer(prod, logger)
 }

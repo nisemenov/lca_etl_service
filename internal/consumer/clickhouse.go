@@ -10,7 +10,7 @@ import (
 	"log/slog"
 
 	"github.com/nisemenov/etl_service/internal/domain"
-	"github.com/nisemenov/etl_service/internal/producer"
+	"github.com/nisemenov/etl_service/internal/httpclient"
 )
 
 type ClickHouseLoader interface {
@@ -18,13 +18,9 @@ type ClickHouseLoader interface {
 }
 
 type HTTPClickHouse struct {
-	http   *producer.HTTPProducer
+	http   *httpclient.HTTPClient
 	table  string
 	logger *slog.Logger
-}
-
-func NewHTTPClickHouseLoader(http *producer.HTTPProducer, table string, logger *slog.Logger) *HTTPClickHouse {
-	return &HTTPClickHouse{http: http, table: table, logger: logger}
 }
 
 func (c *HTTPClickHouse) InsertBatch(ctx context.Context, payments []domain.Payment) error {
@@ -69,8 +65,8 @@ func (c *HTTPClickHouse) paymentToClickHouseRow(payment domain.Payment) ([]byte,
 		"full_name":                payment.FullName,
 		"credit_number":            payment.CreditNumber,
 		"credit_issue_date":        payment.CreditIssueDate,
-		"amount":                   payment.Amount,
-		"debt_amount":              payment.DebtAmount,
+		"amount":                   payment.Amount.Float64(),
+		"debt_amount":              payment.DebtAmount.Float64(),
 		"execution_date_by_system": payment.ExecutionDateBySystem,
 		"channel":                  payment.Channel,
 		"status":                   payment.Status,
@@ -78,4 +74,8 @@ func (c *HTTPClickHouse) paymentToClickHouseRow(payment domain.Payment) ([]byte,
 		"updated_at":               payment.UpdatedAt,
 	}
 	return json.Marshal(row)
+}
+
+func NewHTTPClickHouseLoader(http *httpclient.HTTPClient, table string, logger *slog.Logger) *HTTPClickHouse {
+	return &HTTPClickHouse{http: http, table: table, logger: logger}
 }

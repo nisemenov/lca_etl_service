@@ -3,14 +3,11 @@
 package domain
 
 import (
+	"math"
 	"time"
 
 	"github.com/nisemenov/etl_service/internal/validation"
 )
-
-type PaymentID int64
-
-type PaymentStatus string
 
 const (
 	StatusNew        PaymentStatus = "new"
@@ -19,11 +16,22 @@ const (
 	StatusFailed     PaymentStatus = "failed"
 )
 
-// type for float == int * 100
+type PaymentID int64
+
+type PaymentStatus string
+
+// Money type as float == int * 100
 type Money int64
 
+func FloatToMoney(f float64) Money {
+	return Money(math.Round(f * 100))
+}
+
+func (m Money) Float64() float64 {
+	return float64(m) / 100
+}
+
 type Payment struct {
-	// from payment_yookassa
 	ID                    PaymentID `validate:"required"`
 	CaseID                int64     `validate:"required"`
 	DebtorID              int64     `validate:"required"`

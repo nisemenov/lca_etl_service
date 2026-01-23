@@ -1,4 +1,4 @@
-package producer
+package httpclient
 
 import (
 	"bytes"
@@ -14,13 +14,12 @@ import (
 
 const testURL = "/test"
 
-func TestHTTPProducer_Get_OK(t *testing.T) {
-	called := false
+func TestHTTPClient_Get_OK(t *testing.T) {
+	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
+		mthd = r.Method
 
-		require.Equal(t, "GET", r.Method)
 		require.Equal(t, testURL, r.URL.Path)
 
 		w.Header().Set("Content-Type", "application/json")
@@ -28,8 +27,7 @@ func TestHTTPProducer_Get_OK(t *testing.T) {
 	}))
 	defer server.Close()
 
-	client := &http.Client{}
-	p := NewHTTPProducer(client, server.URL)
+	p := NewHTTPClient(&http.Client{}, server.URL)
 
 	var resp struct {
 		Value int `json:"value"`
@@ -38,35 +36,29 @@ func TestHTTPProducer_Get_OK(t *testing.T) {
 	err := p.Get(context.Background(), testURL, &resp)
 	require.NoError(t, err)
 	require.Equal(t, 42, resp.Value)
-	require.True(t, called)
+	require.Equal(t, "GET", mthd)
 }
 
-func TestHTTPProducer_Get_ErrorStatus(t *testing.T) {
-	called := false
-
+func TestHTTPClient_Get_ErrorStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
-
 		w.WriteHeader(500)
 	}))
 	defer server.Close()
 
-	p := NewHTTPProducer(&http.Client{}, server.URL)
+	p := NewHTTPClient(&http.Client{}, server.URL)
 
 	var out any
 	err := p.Get(context.Background(), testURL, &out)
 
 	require.Error(t, err)
-	require.True(t, called)
 }
 
-func TestHTTPProducer_PostRaw(t *testing.T) {
-	called := false
+func TestHTTPClient_PostRaw(t *testing.T) {
+	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
+		mthd = r.Method
 
-		require.Equal(t, "POST", r.Method)
 		require.Equal(t, testURL, r.URL.Path)
 		require.Equal(t, "application/json", r.Header.Get("Content-Type"))
 
@@ -77,22 +69,21 @@ func TestHTTPProducer_PostRaw(t *testing.T) {
 	}))
 	defer server.Close()
 
-	p := NewHTTPProducer(&http.Client{}, server.URL)
+	p := NewHTTPClient(&http.Client{}, server.URL)
 	// convert req body to bytes
 	b, _ := json.Marshal(map[string]int{"id": 123})
 
 	err := p.PostRaw(context.Background(), testURL, "application/json", bytes.NewReader(b))
 	require.NoError(t, err)
-	require.True(t, called)
+	require.Equal(t, "POST", mthd)
 }
 
-func TestHTTPProducer_Post(t *testing.T) {
-	called := false
+func TestHTTPClient_Post(t *testing.T) {
+	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
+		mthd = r.Method
 
-		require.Equal(t, "POST", r.Method)
 		require.Equal(t, testURL, r.URL.Path)
 
 		var body map[string]int
@@ -102,25 +93,23 @@ func TestHTTPProducer_Post(t *testing.T) {
 	}))
 	defer server.Close()
 
-	p := NewHTTPProducer(&http.Client{}, server.URL)
+	p := NewHTTPClient(&http.Client{}, server.URL)
 
 	err := p.Post(context.Background(), testURL, map[string]int{"id": 123})
 	require.NoError(t, err)
-	require.True(t, called)
+	require.Equal(t, "POST", mthd)
 }
 
-func TestHTTPProducer_Timeout(t *testing.T) {
+func TestHTTPClient_Timeout(t *testing.T) {
 	called := false
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
-
 		time.Sleep(200 * time.Millisecond)
 	}))
 	defer server.Close()
 
-	client := &http.Client{Timeout: 50 * time.Millisecond}
-	p := NewHTTPProducer(client, server.URL)
+	p := NewHTTPClient(&http.Client{Timeout: 50 * time.Millisecond}, server.URL)
 
 	var out any
 	err := p.Get(context.Background(), testURL, &out)
