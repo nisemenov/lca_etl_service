@@ -2,51 +2,36 @@ package main
 
 import (
 	"log/slog"
-	"net/http"
 	"os"
-	"time"
 
 	"github.com/nisemenov/etl_service/internal/config"
-	"github.com/nisemenov/etl_service/internal/producer"
-	"github.com/nisemenov/etl_service/internal/repository"
 	"github.com/nisemenov/etl_service/internal/storage/sqlite"
 )
 
-var logger *slog.Logger
-
-func InitLogger() *slog.Logger {
-	handler := slog.NewTextHandler(os.Stdout, nil)
-	logger = slog.New(handler)
-	return logger
-}
-
 func main() {
-	logger := InitLogger()
-	logger.Info("service started")
-
+	level := slog.LevelInfo
 	cfg := config.Load()
+
+	if cfg.Debug {
+		level = slog.LevelDebug
+	}
+
+	// init Logger
+	handler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level:     level,
+		AddSource: cfg.Debug, // показываем source только при cnf.Debug == true
+	})
+	logger := slog.New(handler)
+	slog.SetDefault(logger) // опционально, если хочешь использовать slog.Info() без переменной
+
+	logger.Info("starting application",
+		"version", "v0.0.1",
+		"debug", cfg.Debug,
+	)
 
 	db := sqlite.OpenSQLite(cfg.DBPath)
 	sqlite.Migrate(db)
 	defer db.Close()
-
-	httpClient := &http.Client{Timeout: 15 * time.Second}
-
-	paymentsProducer := producer.NewHTTPProducer(
-		httpClient,
-		cfg.APIBaseURL,
-		config.FetchPaymentsPath,
-	)
-
-	paymentsRepo := repository.NewSQLitePaymentRepo(db)
-
-	// clickhouse := consumer.NewClickHouseClient(cfg.ClickhouseDSN)
-
-	// etlService := etl.NewService(
-	//     paymentsProducer,
-	//     paymentsRepo,
-	//     clickhouse,
-	// )
 
 	// worker := worker.New(etlService)
 	//
