@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
+func TestPaymentProducer_Fetch_OK(t *testing.T) {
 	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +43,7 @@ func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
 	defer server.Close()
 
 	payProducer := getPayProducer(server)
-	payments, err := payProducer.FetchPayments(context.Background())
+	payments, err := payProducer.Fetch(context.Background())
 
 	require.NoError(t, err)
 	require.Equal(t, "GET", mthd)
@@ -55,7 +55,7 @@ func TestPaymentProducer_FetchPayments_OK(t *testing.T) {
 	require.Equal(t, domain.Money(10000), first.Amount)
 }
 
-func TestPaymentProducer_FetchPayments_SkipsInvalid(t *testing.T) {
+func TestPaymentProducer_Fetch_SkipsInvalid(t *testing.T) {
 	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -84,7 +84,7 @@ func TestPaymentProducer_FetchPayments_SkipsInvalid(t *testing.T) {
 	defer server.Close()
 
 	payProducer := getPayProducer(server)
-	payments, err := payProducer.FetchPayments(context.Background())
+	payments, err := payProducer.Fetch(context.Background())
 
 	require.NoError(t, err)
 	require.Equal(t, "GET", mthd)
@@ -92,7 +92,7 @@ func TestPaymentProducer_FetchPayments_SkipsInvalid(t *testing.T) {
 	require.Equal(t, domain.PaymentID(2), payments[0].ID)
 }
 
-func TestPaymentProducer_AckPayments_OK(t *testing.T) {
+func TestPaymentProducer_Ack_OK(t *testing.T) {
 	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,13 +110,13 @@ func TestPaymentProducer_AckPayments_OK(t *testing.T) {
 	defer server.Close()
 
 	payProducer := getPayProducer(server)
-	err := payProducer.AckPayments(context.Background(), []domain.PaymentID{domain.PaymentID(1), domain.PaymentID(2)})
+	err := payProducer.Ack(context.Background(), []domain.PaymentID{domain.PaymentID(1), domain.PaymentID(2)})
 
 	require.NoError(t, err)
 	require.Equal(t, "POST", mthd)
 }
 
-func TestPaymentProducer_AckPayments_HTTPError(t *testing.T) {
+func TestPaymentProducer_Ack_HTTPError(t *testing.T) {
 	var mthd string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -128,23 +128,23 @@ func TestPaymentProducer_AckPayments_HTTPError(t *testing.T) {
 	defer server.Close()
 
 	payProducer := getPayProducer(server)
-	err := payProducer.AckPayments(context.Background(), []domain.PaymentID{1, 2})
+	err := payProducer.Ack(context.Background(), []domain.PaymentID{1, 2})
 
 	require.Error(t, err)
 	require.Equal(t, "POST", mthd)
 }
 
-func TestPaymentProducer_AckPayments_Empty(t *testing.T) {
+func TestPaymentProducer_Ack_Empty(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	payProducer := NewPaymentProducer(nil, logger)
 
-	err := payProducer.AckPayments(context.Background(), nil)
+	err := payProducer.Ack(context.Background(), nil)
 	require.NoError(t, err)
 }
 
-func getPayProducer(server *httptest.Server) PaymentProducer {
+func getPayProducer(server *httptest.Server) paymentProducer {
 	prod := httpclient.NewHTTPClient(&http.Client{}, server.URL)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 
-	return NewPaymentProducer(prod, logger)
+	return *NewPaymentProducer(prod, logger)
 }

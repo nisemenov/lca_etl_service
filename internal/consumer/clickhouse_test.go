@@ -33,7 +33,7 @@ func TestClickHouseLoader_InsertBatch_OK(t *testing.T) {
 	client := &http.Client{}
 	httpClient := httpclient.NewHTTPClient(client, server.URL)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	loader := NewHTTPClickHouseLoader(httpClient, "payments", logger)
+	loader := NewClickHouseLoader(httpClient, "payments", logger)
 
 	payments := []domain.Payment{
 		{ID: 1, FullName: "Ivan", Amount: domain.Money(10000)},

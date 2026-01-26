@@ -24,7 +24,7 @@ func NewTestSQLiteDB(t *testing.T) *sql.DB {
 	return db
 }
 
-func NewTestSQLitePaymentRepo(t *testing.T) *SQLitePaymentRepo {
+func NewTestSQLitePaymentRepo(t *testing.T) *sqlitePaymentRepo {
 	db := NewTestSQLiteDB(t)
 	repo := NewSQLitePaymentRepo(db)
 	return repo
